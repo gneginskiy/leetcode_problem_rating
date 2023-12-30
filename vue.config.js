@@ -9,6 +9,10 @@ module.exports = defineConfig({
         target: "https://zerotrac.github.io/leetcode_problem_rating",
         secure: false,
       },
+      "/sample.json": {
+        target: "http://localhost:8080/js",
+        secure: false,
+      },
     },
   },
   chainWebpack(config) {

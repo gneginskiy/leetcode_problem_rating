@@ -130,6 +130,7 @@ import { ElMessage } from "element-plus";
 import { useI18n } from "vue-i18n";
 
 const url = "./data.json";
+const url2 = "./sample.json";
 
 interface Problem {
   ContestID_en: string;
@@ -145,7 +146,24 @@ interface Problem {
   ProblemHrefEN: string | null;
   ContestHrefEN: string | null;
   ContestHrefZH: string | null;
+  Solved: string | null;
 }
+
+interface StatDetails {
+  question_id: number;
+  frontend_question_id: number;
+}
+
+interface StatItem {
+  status: string | null;
+  stat: StatDetails;
+}
+
+interface SolvedProblemsData {
+  stat_status_pairs: Array<StatItem> | [];
+  user_name: string | null;
+}
+
 interface SortInfo {
   prop: "Rating" | "ID";
   order: string;
@@ -167,19 +185,45 @@ const problemSetShow: Array<Problem> = reactive([]);
 const filterProblemSet: Array<Problem> = reactive([]);
 let keyword = ref("");
 let currentPage = ref(1);
+
+/* eslint-disable */
 onMounted(() => {
-  axios.get(url).then((res: AxiosResponse<Array<Problem>>) => {
-    const problems = res.data;
-    problems.forEach((item) => {
-      item.ProblemHrefZH = "https://leetcode.cn/problems/" + item.TitleSlug;
-      item.ProblemHrefEN = "https://leetcode.com/problems/" + item.TitleSlug;
-      item.ContestHrefZH = "https://leetcode.cn/contest/" + item.ContestSlug;
-      item.ContestHrefEN = "https://leetcode.com/contest/" + item.ContestSlug;
-      problemSetAll.push(item);
-      filterProblemSet.push(item);
-    });
-    currentChange();
-  });
+  // Function to fetch data and return a Promise
+  const fetchData = async (url) => {
+    const response = await axios.get(url);
+    return response.data;
+  };
+
+  // Use Promise.all to wait for both requests to complete
+  Promise.all([fetchData(url2), fetchData(url)])
+      .then(([solvedProblemsData, problemsData]) => {
+        const map = {};
+        // Process the first response
+        const solvedProblems = solvedProblemsData.stat_status_pairs;
+        for (const p of solvedProblems) {
+          const key = p.stat.frontend_question_id == undefined ? p.stat.question_id: p.stat.frontend_question_id;
+          console.log(key);
+          map[key] = p.status === "ac";
+        }
+        // Process the second response
+        const problems = problemsData;
+        problems.forEach((item) => {
+          item.ProblemHrefZH = "https://leetcode.cn/problems/" + item.TitleSlug;
+          item.ProblemHrefEN = "https://leetcode.com/problems/" + item.TitleSlug;
+          item.ContestHrefZH = "https://leetcode.cn/contest/" + item.ContestSlug;
+          item.ContestHrefEN = "https://leetcode.com/contest/" + item.ContestSlug;
+          const key = ""+ item.ID+"";
+          if (item.ID===1480) console.log("1480 key: "+key+" | "+map[key]);
+          item.Solved = map[key]; // Use boolean comparison
+          problemSetAll.push(item);
+          filterProblemSet.push(item);
+        });
+
+        currentChange();
+      })
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+      });
 });
 
 function sortChange(s: SortInfo) {
@@ -217,7 +261,7 @@ function sizeChange() {
   localStorage.setItem("pageSize", String(pageSize.value));
   currentChange();
 }
-
+/* eslint-disable */
 function query() {
   if (left.value != null && right.value != null && right.value < left.value) {
     ElMessage.error({
@@ -228,6 +272,17 @@ function query() {
   }
   filterProblemSet.length = 0;
   problemSetAll.forEach((item) => {
+    if (keyword.value.trim() === "+" || keyword.value.trim() === "-") {
+      let k = keyword.value.trim().toLowerCase();
+      if (item.ID===1480) console.log("1480 solved: "+item.Solved);
+      if (item.Solved && (k === "+") || (!item.Solved && (k === "-"))) {
+        filterProblemSet.push(item);
+        return;
+      } else {
+
+        return;
+      }
+    }
     if (keyword.value.trim().length > 0) {
       let k = keyword.value.trim().toLowerCase();
       if (
