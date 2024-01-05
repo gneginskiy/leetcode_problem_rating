@@ -280,10 +280,10 @@ function getTitleStyle(difficulty: number) {
   let color;
   switch (difficulty) {
     case 3:
-      color = 'red';
+      color = '#b00000';
       break;
     case 2:
-      color = 'goldenrod';
+      color = '#ec9e3c';
       break;
     case 1:
       color = 'green';
