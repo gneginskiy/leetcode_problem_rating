@@ -75,19 +75,33 @@
         @sort-change="sortChange"
       >
         <el-table-column prop="ID" label="ID" width="180" sortable="custom" />
+        <!--eslint-disable -->
         <el-table-column :label="$t('problemName')">
           <template #default="scope">
             <el-link
-              :href="scope.row.ProblemHrefZH"
-              target="_blank"
-              v-if="locale === 'zh'"
-              >{{ scope.row.TitleZH }}
-            </el-link>
-            <el-link :href="scope.row.ProblemHrefEN" target="_blank" v-else
-              >{{ scope.row.Title }}
+                :href="locale === 'zh' ? scope.row.ProblemHrefZH : scope.row.ProblemHrefEN"
+                target="_blank"
+                :style="getTitleStyle(scope.row.Difficulty)"
+            >
+              {{ locale === 'zh' ? scope.row.TitleZH : scope.row.Title }}
             </el-link>
           </template>
         </el-table-column>
+
+<!--        <el-table-column :label="$t('problemName')">-->
+<!--          <template #default="scope">-->
+<!--            <el-link-->
+<!--              :href="scope.row.ProblemHrefZH"-->
+<!--              target="_blank"-->
+<!--              v-if="locale === 'zh'"-->
+<!--              >{{ scope.row.TitleZH }}-->
+<!--            </el-link>-->
+<!--            <el-link :href="scope.row.ProblemHrefEN" target="_blank" v-else-->
+<!--              >{{ scope.row.Title }}-->
+<!--            </el-link>-->
+<!--          </template>-->
+<!--        </el-table-column>-->
+
         <el-table-column :label="$t('contestName')">
           <template #default="scope">
             <el-link
@@ -147,6 +161,7 @@ interface Problem {
   ContestHrefEN: string | null;
   ContestHrefZH: string | null;
   Solved: string | null;
+  Difficulty: string | null;
 }
 
 interface StatDetails {
@@ -154,9 +169,14 @@ interface StatDetails {
   frontend_question_id: number;
 }
 
+interface DifficultyDetails {
+  level: number;
+}
+
 interface StatItem {
   status: string | null;
   stat: StatDetails;
+  difficulty: DifficultyDetails;
 }
 
 interface SolvedProblemsData {
@@ -187,23 +207,32 @@ let keyword = ref("");
 let currentPage = ref(1);
 
 /* eslint-disable */
+function toDiff(level: number) {
+  if(level===1) return "easy";
+  if(level===2) return "medium";
+  if (level===3) return "hard";
+  return "";
+}
+
+/* eslint-disable */
 onMounted(() => {
   // Function to fetch data and return a Promise
   const fetchData = async (url) => {
     const response = await axios.get(url);
     return response.data;
   };
-
   // Use Promise.all to wait for both requests to complete
   Promise.all([fetchData(url2), fetchData(url)])
       .then(([solvedProblemsData, problemsData]) => {
-        const map = {};
+        const idToStatusMap = {};
+        const idToDifficultyMap = {};
         // Process the first response
         const solvedProblems = solvedProblemsData.stat_status_pairs;
         for (const p of solvedProblems) {
-          const key = p.stat.frontend_question_id == undefined ? p.stat.question_id: p.stat.frontend_question_id;
-          console.log(key);
-          map[key] = p.status === "ac";
+          const idKey = p.stat.frontend_question_id == undefined ? p.stat.question_id: p.stat.frontend_question_id;
+          console.log(idKey);
+          idToStatusMap[idKey] = p.status === "ac";
+          idToDifficultyMap[idKey] = p.difficulty.level;
         }
         // Process the second response
         const problems = problemsData;
@@ -213,8 +242,8 @@ onMounted(() => {
           item.ContestHrefZH = "https://leetcode.cn/contest/" + item.ContestSlug;
           item.ContestHrefEN = "https://leetcode.com/contest/" + item.ContestSlug;
           const key = ""+ item.ID+"";
-          if (item.ID===1480) console.log("1480 key: "+key+" | "+map[key]);
-          item.Solved = map[key]; // Use boolean comparison
+          item.Solved = idToStatusMap[key]; // Use boolean comparison
+          item.Difficulty = idToDifficultyMap[key];
           problemSetAll.push(item);
           filterProblemSet.push(item);
         });
@@ -244,6 +273,28 @@ function switchLocale(locale: string) {
 
 function formatNumber(rating: number) {
   return Math.floor(rating);
+}
+
+/* eslint-disable */
+function getTitleStyle(difficulty: number) {
+  let color;
+  switch (difficulty) {
+    case 3:
+      color = 'red';
+      break;
+    case 2:
+      color = 'goldenrod';
+      break;
+    case 1:
+      color = 'green';
+      break;
+    default:
+      color = 'black';
+  }
+  return {
+    fontWeight: 'bold',
+    color: color
+  };
 }
 
 function currentChange() {
